@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaisaTrack</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1115">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #171a21;
+    --card2: #1e222b;
+    --accent: #4ade80;
+    --accent2: #f87171;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --border: #2a2f3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    max-width: 480px;
+    margin-inline: auto;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+
+  #setupScreen {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  #setupScreen p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  #setupScreen a { color: #60a5fa; }
+  #setupScreen input {
+    width: 100%;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+  #setupScreen button {
+    width: 100%;
+    background: var(--accent);
+    color: #0f1115;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  #setupStatus { font-size: 12px; margin-top: 8px; }
+
+  .hidden { display: none !important; }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+  .card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+  .card .value { font-size: 17px; font-weight: 700; margin-top: 4px; }
+  .income { color: var(--accent); }
+  .expense { color: var(--accent2); }
+  .balance { color: #60a5fa; }
+
+  .periodTabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .periodTabs button {
+    flex: 1;
+    background: var(--card2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .periodTabs button.active {
+    background: var(--accent);
+    color: #0f1115;
+    border-color: var(--accent);
+  }
+
+  form {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  form .full { grid-column: 1 / -1; }
+  label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; }
+  input, select {
+    width: 100%;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  button.submitBtn {
+    grid-column: 1 / -1;
+    background: var(--accent);
+    color: #0f1115;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .filters {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    overflow-x: auto;
+  }
+  .filters button {
+    background: var(--card2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .filters button.active {
+    background: var(--accent);
+    color: #0f1115;
+    border-color: var(--accent);
+  }
+
+  .entry {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .entry .left { display: flex; flex-direction: column; }
+  .entry .cat { font-size: 14px; font-weight: 600; }
+  .entry .note { font-size: 12px; color: var(--muted); }
+  .entry .date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .entry .amt { font-size: 15px; font-weight: 700; }
+  .entry .del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    padding: 0 4px;
+    cursor: pointer;
+  }
+  .empty { text-align: center; color: var(--muted); padding: 24px 0; font-size: 13px; }
+  .syncMsg { text-align: center; font-size: 11px; color: var(--muted); padding: 6px 0; }
+  footer { text-align: center; color: var(--muted); font-size: 11px; margin-top: 20px; padding-bottom: 10px; }
+  footer button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    text-decoration: underline;
+    font-size: 11px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<h1>🪙 PaisaTrack</h1>
+<div class="sub">Your personal income & expense tracker</div>
+
+<div id="setupScreen">
+  <p><b>One-time setup.</b> This app saves your entries to your own free <a href="https://supabase.com" target="_blank">Supabase</a> project, so nothing is lost even if you clear your browser.</p>
+  <p>1. Create a free project at supabase.com<br>
+     2. In the SQL editor, run:</p>
+  <p style="background:var(--card2); padding:8px; border-radius:6px; font-family:monospace; font-size:11px; color:#a5f3fc;">
+    create table entries (<br>
+    &nbsp;id text primary key,<br>
+    &nbsp;type text, amount numeric,<br>
+    &nbsp;category text, date date,<br>
+    &nbsp;note text, created_at timestamp default now()<br>
+    );<br>
+    alter table entries enable row level security;<br>
+    create policy "public access" on entries for all using (true);
+  </p>
+  <p>3. Go to Project Settings → API, copy your Project URL and anon public key below:</p>
+  <input type="text" id="supaUrl" placeholder="https://xxxxx.supabase.co">
+  <input type="text" id="supaKey" placeholder="anon public key (eyJ...)">
+  <button onclick="saveConfig()">Connect & Start Tracking</button>
+  <div id="setupStatus"></div>
+</div>
+
+<div id="app" class="hidden">
+
+  <div class="periodTabs">
+    <button data-p="daily" class="active">Daily</button>
+    <button data-p="weekly">Weekly</button>
+    <button data-p="monthly">Monthly</button>
+    <button data-p="all">All time</button>
+  </div>
+
+  <div id="summary" class="summary">
+    <div class="card"><div class="label">Income</div><div class="value income" id="totalIncome">₹0</div></div>
+    <div class="card"><div class="label">Out</div><div class="value expense" id="totalExpense">₹0</div></div>
+    <div class="card"><div class="label">Balance</div><div class="value balance" id="totalBalance">₹0</div></div>
+  </div>
+
+  <form id="entryForm">
+    <div>
+      <label>Type</label>
+      <select id="type">
+        <option value="expense">Expense</option>
+        <option value="income">Income</option>
+        <option value="saving">Saving/Invest</option>
+      </select>
+    </div>
+    <div>
+      <label>Amount (₹)</label>
+      <input type="number" id="amount" placeholder="0" min="0" step="0.01" required>
+    </div>
+    <div>
+      <label>Category</label>
+      <select id="category">
+        <option>PG / Rent</option>
+        <option>Food</option>
+        <option>Transport</option>
+        <option>Recharge</option>
+        <option>Family</option>
+        <option>Zerodha Investment</option>
+        <option>Trading</option>
+        <option>Emergency Fund</option>
+        <option>Phone Fund</option>
+        <option>Salary</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div>
+      <label>Date</label>
+      <input type="date" id="date" required>
+    </div>
+    <div class="full">
+      <label>Note (optional)</label>
+      <input type="text" id="note" placeholder="e.g. sister's shoes">
+    </div>
+    <button type="submit" class="submitBtn">Add Entry</button>
+  </form>
+
+  <div class="filters">
+    <button data-f="all" class="active">All</button>
+    <button data-f="income">Income</button>
+    <button data-f="expense">Expense</button>
+    <button data-f="saving">Savings</button>
+  </div>
+
+  <div id="syncMsg" class="syncMsg"></div>
+  <div id="list"></div>
+
+  <footer>
+    PaisaTrack · synced to your Supabase
+    <br><button onclick="resetConfig()">Disconnect / change project</button>
+  </footer>
+</div>
+
+<script>
+const CONFIG_KEY = 'paisatrack_config';
+let supabase = null;
+let entries = [];
+let typeFilter = 'all';
+let periodFilter = 'daily';
+
+document.getElementById('date').valueAsDate = new Date();
+
+function getConfig() {
+  try { return JSON.parse(localStorage.getItem(CONFIG_KEY)); } catch { return null; }
+}
+
+function initApp() {
+  const cfg = getConfig();
+  if (!cfg || !cfg.url || !cfg.key) {
+    document.getElementById('setupScreen').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+    return;
+  }
+  document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  supabase = window.supabase.createClient(cfg.url, cfg.key);
+  loadEntries();
+}
+
+async function saveConfig() {
+  const url = document.getElementById('supaUrl').value.trim();
+  const key = document.getElementById('supaKey').value.trim();
+  const status = document.getElementById('setupStatus');
+  if (!url || !key) {
+    status.textContent = 'Please fill both fields.';
+    status.style.color = 'var(--accent2)';
+    return;
+  }
+  status.textContent = 'Connecting...';
+  status.style.color = 'var(--muted)';
+  try {
+    const testClient = window.supabase.createClient(url, key);
+    const { error } = await testClient.from('entries').select('id').limit(1);
+    if (error) throw error;
+    localStorage.setItem(CONFIG_KEY, JSON.stringify({ url, key }));
+    status.textContent = 'Connected!';
+    status.style.color = 'var(--accent)';
+    setTimeout(initApp, 500);
+  } catch (e) {
+    status.textContent = 'Could not connect — check your URL/key and that the table exists. (' + (e.message || 'error') + ')';
+    status.style.color = 'var(--accent2)';
+  }
+}
+
+function resetConfig() {
+  if (confirm('Disconnect from this Supabase project? Your data stays safe in Supabase, you can reconnect anytime.')) {
+    localStorage.removeItem(CONFIG_KEY);
+    initApp();
+  }
+}
+
+async function loadEntries() {
+  const syncMsg = document.getElementById('syncMsg');
+  syncMsg.textContent = 'Syncing...';
+  const { data, error } = await supabase.from('entries').select('*').order('date', { ascending: false });
+  if (error) {
+    syncMsg.textContent = 'Sync failed: ' + error.message;
+    entries = [];
+  } else {
+    entries = data.map(e => ({ ...e, amount: Number(e.amount) }));
+    syncMsg.textContent = '';
+  }
+  render();
+}
+
+function fmt(n) {
+  return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+function getPeriodRange(period) {
+  const now = new Date();
+  const start = new Date(now);
+  if (period === 'daily') {
+    start.setHours(0,0,0,0);
+  } else if (period === 'weekly') {
+    const day = now.getDay();
+    const diff = (day === 0 ? 6 : day - 1);
+    start.setDate(now.getDate() - diff);
+    start.setHours(0,0,0,0);
+  } else if (period === 'monthly') {
+    start.setDate(1);
+    start.setHours(0,0,0,0);
+  } else {
+    return null;
+  }
+  return start;
+}
+
+function render() {
+  const rangeStart = getPeriodRange(periodFilter);
+  let periodEntries = entries;
+  if (rangeStart) {
+    periodEntries = entries.filter(e => new Date(e.date + 'T00:00:00') >= rangeStart);
+  }
+
+  const income = periodEntries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+  const expense = periodEntries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
+  const saving = periodEntries.filter(e => e.type === 'saving').reduce((s, e) => s + e.amount, 0);
+  const balance = income - expense - saving;
+
+  document.getElementById('totalIncome').textContent = fmt(income);
+  document.getElementById('totalExpense').textContent = fmt(expense + saving);
+  document.getElementById('totalBalance').textContent = fmt(balance);
+
+  const list = document.getElementById('list');
+  const filtered = typeFilter === 'all' ? periodEntries : periodEntries.filter(e => e.type === typeFilter);
+  const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (sorted.length === 0) {
+    list.innerHTML = '<div class="empty">No entries in this period.</div>';
+    return;
+  }
+
+  list.innerHTML = sorted.map(e => {
+    const sign = e.type === 'income' ? '+' : '-';
+    const color = e.type === 'income' ? 'var(--accent)' : (e.type === 'saving' ? '#60a5fa' : 'var(--accent2)');
+    return `
+      <div class="entry">
+        <div class="left">
+          <div class="cat">${e.category}</div>
+          ${e.note ? `<div class="note">${e.note}</div>` : ''}
+          <div class="date">${new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="amt" style="color:${color}">${sign}${fmt(e.amount)}</div>
+          <button class="del" onclick="deleteEntry('${e.id}')">✕</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function deleteEntry(id) {
+  const { error } = await supabase.from('entries').delete().eq('id', id);
+  if (!error) {
+    entries = entries.filter(e => e.id !== id);
+    render();
+  }
+}
+
+document.getElementById('entryForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const type = document.getElementById('type').value;
+  const amount = parseFloat(document.getElementById('amount').value);
+  const category = document.getElementById('category').value;
+  const date = document.getElementById('date').value;
+  const note = document.getElementById('note').value.trim();
+
+  if (!amount || amount <= 0) return;
+
+  const newEntry = { id: Date.now().toString(), type, amount, category, date, note };
+  const { error } = await supabase.from('entries').insert(newEntry);
+  if (!error) {
+    entries.unshift(newEntry);
+    document.getElementById('amount').value = '';
+    document.getElementById('note').value = '';
+    render();
+  } else {
+    alert('Could not save: ' + error.message);
+  }
+});
+
+document.querySelectorAll('.filters button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    typeFilter = btn.dataset.f;
+    render();
+  });
+});
+
+document.querySelectorAll('.periodTabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.periodTabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    periodFilter = btn.dataset.p;
+    render();
+  });
+});
+
+initApp();
+</script>
+
+</body>
+</html>
