@@ -220,7 +220,7 @@
   <p>3. Go to Project Settings → API, copy your Project URL and anon public key below:</p>
   <input type="text" id="supaUrl" placeholder="https://xxxxx.supabase.co">
   <input type="text" id="supaKey" placeholder="anon public key (eyJ...)">
-  <button onclick="saveConfig()">Connect & Start Tracking</button>
+  <button id="connectBtn">Connect & Start Tracking</button>
   <div id="setupStatus"></div>
 </div>
 
@@ -291,13 +291,13 @@
 
   <footer>
     PaisaTrack · synced to your Supabase
-    <br><button onclick="resetConfig()">Disconnect / change project</button>
+    <br><button id="disconnectBtn">Disconnect / change project</button>
   </footer>
 </div>
 
 <script>
 const CONFIG_KEY = 'paisatrack_config';
-let supabase = null;
+let supabaseClient = null;
 let entries = [];
 let typeFilter = 'all';
 let periodFilter = 'daily';
@@ -317,7 +317,7 @@ function initApp() {
   }
   document.getElementById('setupScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  supabase = window.supabase.createClient(cfg.url, cfg.key);
+  supabaseClient = window.supabase.createClient(cfg.url, cfg.key);
   loadEntries();
 }
 
@@ -356,7 +356,7 @@ function resetConfig() {
 async function loadEntries() {
   const syncMsg = document.getElementById('syncMsg');
   syncMsg.textContent = 'Syncing...';
-  const { data, error } = await supabase.from('entries').select('*').order('date', { ascending: false });
+  const { data, error } = await supabaseClient.from('entries').select('*').order('date', { ascending: false });
   if (error) {
     syncMsg.textContent = 'Sync failed: ' + error.message;
     entries = [];
@@ -427,7 +427,7 @@ function render() {
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
           <div class="amt" style="color:${color}">${sign}${fmt(e.amount)}</div>
-          <button class="del" onclick="deleteEntry('${e.id}')">✕</button>
+          <button class="del" data-del-id="${e.id}">✕</button>
         </div>
       </div>
     `;
@@ -435,7 +435,7 @@ function render() {
 }
 
 async function deleteEntry(id) {
-  const { error } = await supabase.from('entries').delete().eq('id', id);
+  const { error } = await supabaseClient.from('entries').delete().eq('id', id);
   if (!error) {
     entries = entries.filter(e => e.id !== id);
     render();
@@ -453,7 +453,7 @@ document.getElementById('entryForm').addEventListener('submit', async (ev) => {
   if (!amount || amount <= 0) return;
 
   const newEntry = { id: Date.now().toString(), type, amount, category, date, note };
-  const { error } = await supabase.from('entries').insert(newEntry);
+  const { error } = await supabaseClient.from('entries').insert(newEntry);
   if (!error) {
     entries.unshift(newEntry);
     document.getElementById('amount').value = '';
@@ -462,6 +462,13 @@ document.getElementById('entryForm').addEventListener('submit', async (ev) => {
   } else {
     alert('Could not save: ' + error.message);
   }
+});
+
+document.getElementById('connectBtn').addEventListener('click', saveConfig);
+document.getElementById('disconnectBtn').addEventListener('click', resetConfig);
+document.getElementById('list').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('[data-del-id]');
+  if (btn) deleteEntry(btn.dataset.delId);
 });
 
 document.querySelectorAll('.filters button').forEach(btn => {
