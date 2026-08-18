@@ -187,6 +187,68 @@
   }
   .empty { text-align: center; color: var(--muted); padding: 24px 0; font-size: 13px; }
   .syncMsg { text-align: center; font-size: 11px; color: var(--muted); padding: 6px 0; }
+
+  .sectionTitle {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 20px 0 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .sectionTitle button {
+    background: var(--card2);
+    color: var(--accent);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .monthBanner {
+    background: linear-gradient(135deg, #4338ca, #3730a3);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    color: #fff;
+  }
+  .monthBanner .mLabel { font-size: 11px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .monthBanner .mTitle { font-size: 18px; font-weight: 700; margin: 4px 0 10px; }
+  .monthBanner .mBarTrack { background: rgba(255,255,255,0.2); border-radius: 20px; height: 8px; overflow: hidden; }
+  .monthBanner .mBarFill { background: #fff; height: 100%; border-radius: 20px; }
+  .monthBanner .mFoot { display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px; opacity: 0.9; }
+
+  .budgetCard {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .budgetCard .bTop { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .budgetCard .bCat { font-size: 13px; font-weight: 600; }
+  .budgetCard .bAmt { font-size: 12px; color: var(--muted); }
+  .budgetCard .bAmt b { color: var(--text); }
+  .budgetCard .bTrack { background: var(--card2); border-radius: 20px; height: 6px; overflow: hidden; }
+  .budgetCard .bFill { height: 100%; border-radius: 20px; background: var(--accent); }
+  .budgetCard .bFill.over { background: var(--accent2); }
+  .budgetCard .bDel {
+    background: none; border: none; color: var(--muted); font-size: 13px; cursor: pointer; padding: 0 0 0 8px;
+  }
+
+  #budgetForm {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  #budgetForm .full { grid-column: 1 / -1; }
   footer { text-align: center; color: var(--muted); font-size: 11px; margin-top: 20px; padding-bottom: 10px; }
   footer button {
     background: none;
@@ -215,7 +277,14 @@
     &nbsp;note text, created_at timestamp default now()<br>
     );<br>
     alter table entries enable row level security;<br>
-    create policy "public access" on entries for all using (true);
+    create policy "public access" on entries for all using (true);<br><br>
+    create table budgets (<br>
+    &nbsp;id text primary key,<br>
+    &nbsp;category text, monthly_limit numeric,<br>
+    &nbsp;created_at timestamp default now()<br>
+    );<br>
+    alter table budgets enable row level security;<br>
+    create policy "public access" on budgets for all using (true);
   </p>
   <p>3. Go to Project Settings → API, copy your Project URL and anon public key below:</p>
   <input type="text" id="supaUrl" placeholder="https://xxxxx.supabase.co">
@@ -225,6 +294,46 @@
 </div>
 
 <div id="app" class="hidden">
+
+  <div class="monthBanner">
+    <div class="mLabel" id="mLabel">This Month</div>
+    <div class="mTitle" id="mTitle">—</div>
+    <div class="mBarTrack"><div class="mBarFill" id="mBarFill" style="width:0%"></div></div>
+    <div class="mFoot">
+      <span id="mSpentLabel">Spent ₹0</span>
+      <span id="mBudgetLabel">of ₹0 budget</span>
+    </div>
+  </div>
+
+  <div class="sectionTitle">
+    Monthly Budget
+    <button id="toggleBudgetForm">+ Set budget</button>
+  </div>
+
+  <form id="budgetForm" class="hidden">
+    <div>
+      <label>Category</label>
+      <select id="budgetCategory">
+        <option>PG / Rent</option>
+        <option>Food</option>
+        <option>Transport</option>
+        <option>Recharge</option>
+        <option>Family</option>
+        <option>Zerodha Investment</option>
+        <option>Trading</option>
+        <option>Emergency Fund</option>
+        <option>Phone Fund</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div>
+      <label>Monthly limit (₹)</label>
+      <input type="number" id="budgetLimit" placeholder="0" min="0" step="1" required>
+    </div>
+    <button type="submit" class="submitBtn full">Save Budget</button>
+  </form>
+
+  <div id="budgetList"></div>
 
   <div class="periodTabs">
     <button data-p="daily" class="active">Daily</button>
@@ -299,6 +408,7 @@
 const CONFIG_KEY = 'paisatrack_config';
 let supabaseClient = null;
 let entries = [];
+let budgets = [];
 let typeFilter = 'all';
 let periodFilter = 'daily';
 
@@ -319,6 +429,7 @@ function initApp() {
   document.getElementById('app').classList.remove('hidden');
   supabaseClient = window.supabase.createClient(cfg.url, cfg.key);
   loadEntries();
+  loadBudgets();
 }
 
 async function saveConfig() {
@@ -370,6 +481,107 @@ async function loadEntries() {
 function fmt(n) {
   return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
 }
+
+// ---- Budgets (categorized, auto-applies to whichever month is current — no manual reset needed) ----
+async function loadBudgets() {
+  const { data, error } = await supabaseClient.from('budgets').select('*').order('created_at', { ascending: true });
+  if (!error) budgets = data.map(b => ({ ...b, monthly_limit: Number(b.monthly_limit) }));
+  renderBudgets();
+  renderMonthBanner();
+}
+
+async function deleteBudget(id) {
+  const { error } = await supabaseClient.from('budgets').delete().eq('id', id);
+  if (!error) {
+    budgets = budgets.filter(b => b.id !== id);
+    renderBudgets();
+    renderMonthBanner();
+  }
+}
+
+document.getElementById('toggleBudgetForm').addEventListener('click', () => {
+  document.getElementById('budgetForm').classList.toggle('hidden');
+});
+
+document.getElementById('budgetForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const category = document.getElementById('budgetCategory').value;
+  const monthly_limit = parseFloat(document.getElementById('budgetLimit').value);
+  if (!monthly_limit || monthly_limit <= 0) return;
+
+  const existing = budgets.find(b => b.category === category);
+  if (existing) {
+    const { error } = await supabaseClient.from('budgets').update({ monthly_limit }).eq('id', existing.id);
+    if (!error) existing.monthly_limit = monthly_limit;
+  } else {
+    const newBudget = { id: 'b' + Date.now().toString(), category, monthly_limit };
+    const { error } = await supabaseClient.from('budgets').insert(newBudget);
+    if (!error) budgets.push(newBudget);
+  }
+  document.getElementById('budgetLimit').value = '';
+  document.getElementById('budgetForm').classList.add('hidden');
+  renderBudgets();
+  renderMonthBanner();
+});
+
+document.getElementById('budgetList').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('[data-bdel-id]');
+  if (btn) deleteBudget(btn.dataset.bdelId);
+});
+
+function currentMonthEntries() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  return entries.filter(e => new Date(e.date + 'T00:00:00') >= start);
+}
+
+function renderBudgets() {
+  const list = document.getElementById('budgetList');
+  if (budgets.length === 0) {
+    list.innerHTML = '<div class="empty">No budgets set yet — tap "+ Set budget" to add one per category.</div>';
+    return;
+  }
+  const monthEntries = currentMonthEntries();
+  list.innerHTML = budgets.map(b => {
+    const spent = monthEntries
+      .filter(e => e.category === b.category && (e.type === 'expense' || e.type === 'saving'))
+      .reduce((s, e) => s + e.amount, 0);
+    const pct = Math.min(100, Math.round((spent / b.monthly_limit) * 100));
+    const over = spent > b.monthly_limit;
+    return `
+      <div class="budgetCard">
+        <div class="bTop">
+          <div class="bCat">${b.category}</div>
+          <div style="display:flex; align-items:center;">
+            <div class="bAmt"><b>${fmt(spent)}</b> / ${fmt(b.monthly_limit)}</div>
+            <button class="bDel" data-bdel-id="${b.id}">✕</button>
+          </div>
+        </div>
+        <div class="bTrack"><div class="bFill ${over ? 'over' : ''}" style="width:${pct}%"></div></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderMonthBanner() {
+  const now = new Date();
+  const monthName = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  document.getElementById('mTitle').textContent = monthName;
+
+  const monthEntries = currentMonthEntries();
+  const totalBudget = budgets.reduce((s, b) => s + b.monthly_limit, 0);
+  const totalSpent = monthEntries
+    .filter(e => e.type === 'expense' || e.type === 'saving')
+    .reduce((s, e) => s + e.amount, 0);
+
+  const pct = totalBudget > 0 ? Math.min(100, Math.round((totalSpent / totalBudget) * 100)) : 0;
+  document.getElementById('mBarFill').style.width = pct + '%';
+  document.getElementById('mSpentLabel').textContent = 'Spent ' + fmt(totalSpent);
+  document.getElementById('mBudgetLabel').textContent = totalBudget > 0
+    ? 'of ' + fmt(totalBudget) + ' budget'
+    : 'no budget set yet';
+}
+
 
 function getPeriodRange(period) {
   const now = new Date();
@@ -439,6 +651,8 @@ async function deleteEntry(id) {
   if (!error) {
     entries = entries.filter(e => e.id !== id);
     render();
+    renderBudgets();
+    renderMonthBanner();
   }
 }
 
@@ -459,6 +673,8 @@ document.getElementById('entryForm').addEventListener('submit', async (ev) => {
     document.getElementById('amount').value = '';
     document.getElementById('note').value = '';
     render();
+    renderBudgets();
+    renderMonthBanner();
   } else {
     alert('Could not save: ' + error.message);
   }
