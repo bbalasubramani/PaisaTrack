@@ -336,9 +336,9 @@
   <div id="budgetList"></div>
 
   <div class="periodTabs">
-    <button data-p="daily" class="active">Daily</button>
+    <button data-p="daily">Daily</button>
     <button data-p="weekly">Weekly</button>
-    <button data-p="monthly">Monthly</button>
+    <button data-p="monthly" class="active">Monthly</button>
     <button data-p="all">All time</button>
   </div>
 
@@ -410,7 +410,7 @@ let supabaseClient = null;
 let entries = [];
 let budgets = [];
 let typeFilter = 'all';
-let periodFilter = 'daily';
+let periodFilter = 'monthly';
 
 document.getElementById('date').valueAsDate = new Date();
 
