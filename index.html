@@ -66,7 +66,12 @@ input,select{width:100%;border:0;background:var(--c2);box-shadow:var(--in);color
 .cats{display:flex;flex-wrap:wrap;gap:8px}.cat{box-shadow:var(--sh)}.cat.sug{outline:2px dashed var(--ac)}
 .go{width:100%;margin-top:16px;border:0;border-radius:18px;padding:14px;background:var(--ac);color:#fff;font:800 15px inherit;font-family:inherit;box-shadow:var(--sh);cursor:pointer}
 .go:disabled{opacity:.45;cursor:not-allowed}
-.scan{display:block;text-align:center;padding:13px;border-radius:18px;background:var(--card);box-shadow:var(--sh);font-weight:700;font-size:14px;color:var(--ac);cursor:pointer}
+.mic{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:22px;padding:16px;background:var(--ac);color:#fff;font:800 16px inherit;font-family:inherit;box-shadow:var(--sh);cursor:pointer}
+.mic.on{background:var(--exp);animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.7}}
+.vl{width:auto;margin:10px auto 0;display:block;padding:8px 12px;font-size:12px}
+.dayh{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--mu);margin:14px 4px 8px}
+.notes p{margin:8px 0;font-size:13px;line-height:1.45;font-weight:600}
 #st{font-size:12px;color:var(--mu);margin-top:8px;min-height:16px;text-align:center}
 #toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);z-index:60;max-width:92%;padding:12px 16px;border-radius:18px;font-size:13px;font-weight:700;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--gb);box-shadow:var(--sh)}
 #setup{background:var(--card);border-radius:24px;padding:18px;box-shadow:var(--sh);margin-top:16px}
@@ -111,9 +116,10 @@ create policy "public access" on budgets for all using (true);</code>
     <button data-p="daily">Daily</button><button data-p="weekly">Weekly</button><button data-p="monthly" class="on">Monthly</button><button data-p="all">All</button>
   </div>
   <div class="bento">
-    <div class="tile s2"><div class="lbl">Balance</div><div class="big" id="tBal">₹0</div></div>
     <div class="tile"><div class="lbl">Income</div><div class="mid inc" id="tInc">₹0</div></div>
-    <div class="tile"><div class="lbl">Out</div><div class="mid exp" id="tOut">₹0</div></div>
+    <div class="tile"><div class="lbl">Spent</div><div class="mid exp" id="tOut">₹0</div></div>
+    <div class="tile"><div class="lbl">Invested</div><div class="mid" id="tSav" style="color:var(--ac)">₹0</div></div>
+    <div class="tile"><div class="lbl">Balance</div><div class="mid" id="tBal">₹0</div></div>
   </div>
   <div class="chips" id="filters">
     <button data-f="all" class="on">All</button><button data-f="income">Income</button><button data-f="expense">Expense</button><button data-f="saving">Savings</button>
@@ -127,6 +133,7 @@ create policy "public access" on budgets for all using (true);</code>
   <div class="bento">
     <div class="tile"><div class="lbl">Savings rate</div><div class="big" id="sRate">–</div><div class="sm" id="sNote">income − spent</div></div>
     <div class="tile"><div class="lbl">Spent vs last month</div><div class="big" id="sDelta">–</div><div class="sm" id="sDeltaN"></div></div>
+    <div class="tile s2"><div class="title" style="margin:0 0 4px">Smart notes</div><div class="notes" id="notes"></div></div>
     <div class="tile s2">
       <div class="title" style="margin:0"><span>Spending heatmap</span><span><button class="pill" id="hmPrev">‹</button> <button class="pill" id="hmNext">›</button></span></div>
       <div class="sm" id="hmTitle"></div><div class="hm" id="hm"></div><div class="sm" id="hmInfo">Tap a day</div>
@@ -144,7 +151,7 @@ create policy "public access" on budgets for all using (true);</code>
   <div id="alertsBud"></div>
   <div class="title">Monthly budget <button class="pill" id="togBud">+ Set budget</button></div>
   <div class="tile hidden" id="budForm" style="margin-bottom:14px">
-    <label style="margin-top:0">Category</label><select id="bCat"></select>
+    <label style="margin-top:0">Category</label><select id="bCat"></select><div class="sm" id="bHint"></div>
     <label>Monthly limit (₹)</label><input type="number" id="bLim" min="1" placeholder="0">
     <button class="go" id="bSave">Save budget</button>
   </div>
@@ -163,19 +170,21 @@ create policy "public access" on budgets for all using (true);</code>
 
 <div id="ov" class="hidden"><div id="sheet">
   <div class="title" style="margin-top:0"><span>New entry</span><button class="ib" id="close" style="width:36px;height:36px;font-size:15px">✕</button></div>
-  <label class="scan"><input type="file" id="shot" accept="image/*" hidden>📷 Scan a GPay screenshot</label>
-  <div id="st">Read on your device. The image is never saved or uploaded.</div>
-  <div class="seg" id="typeSeg" style="margin:12px 0 0"><button data-ty="expense" class="on">Expense</button><button data-ty="income">Income</button><button data-ty="saving">Saving</button></div>
+  <button class="mic" id="mic" type="button"><span>🎤</span><span id="micT">Tap and speak</span></button>
+  <select id="vlang" class="vl" aria-label="Voice language"><option value="en-IN">English</option><option value="hi-IN">Hindi</option><option value="ta-IN">Tamil</option><option value="kn-IN">Kannada</option></select>
+  <div id="st">Say: “tea 20 rupees” or “got salary 29000”</div>
+  <label>Quick add</label><div class="chips" id="quick"></div>
+  <div class="seg" id="typeSeg" style="margin:4px 0 0"><button data-ty="expense" class="on">Expense</button><button data-ty="income">Income</button><button data-ty="saving">Saving</button></div>
   <label>Amount (₹)</label><input type="number" id="amt" min="0" step="0.01" placeholder="0">
   <label>Date</label><input type="date" id="dt">
-  <label>Note</label><input type="text" id="note" placeholder="e.g. sister's shoes">
+  <label>Note</label><input type="text" id="note" placeholder="e.g. tea">
   <label>Category — pick one</label><div class="cats" id="cats"></div>
   <button class="go" id="save" disabled>Add entry</button>
 </div></div>
 <div id="toast" class="hidden"></div>
 
 <script>
-const CK='paisatrack_config', MK='paisatrack_merchants';
+const CK='paisatrack_config';
 const CATS=['PG / Rent','Food','Transport','Recharge','Family','Zerodha Investment','Trading','Emergency Fund','Phone Fund','Salary','Other'];
 const BCATS=CATS.filter(c=>c!=='Salary');
 const PAL=['#6c8cff','#2fb57e','#f2a93b','#ef6b6b','#a58bff','#4cc9f0','#ff8fab','#9aa3b8'];
@@ -204,7 +213,7 @@ function initApp(){
   if(!c||!c.url||!c.key){$('setup').classList.remove('hidden');$('app').classList.add('hidden');return}
   $('setup').classList.add('hidden');$('app').classList.remove('hidden');
   sb=window.supabase.createClient(c.url,c.key);
-  Promise.all([loadEntries(),loadBudgets()]).then(()=>{renderAll();checkShared()});
+  Promise.all([loadEntries(),loadBudgets()]).then(()=>renderAll());
 }
 async function saveCfg(){
   const url=$('supaUrl').value.trim(),key=$('supaKey').value.trim(),s=$('setupStatus');
@@ -253,7 +262,9 @@ function renderBanner(){
   $('mBud').textContent=tb?(tb>=sp?fmt(tb-sp)+' left of '+fmt(tb):fmt(sp-tb)+' over '+fmt(tb)):'no budget set yet';
 }
 $('bCat').innerHTML=BCATS.map(c=>`<option>${c}</option>`).join('');
-$('togBud').onclick=()=>$('budForm').classList.toggle('hidden');
+function hint(){const c=$('bCat').value,a=sum(inM(mkey(1),['expense','saving']).filter(e=>e.category===c)),b=sum(inM(mkey(0),['expense','saving']).filter(e=>e.category===c));$('bHint').textContent=`Last month ${fmt(a)} · this month so far ${fmt(b)}`}
+$('bCat').onchange=hint;
+$('togBud').onclick=()=>{$('budForm').classList.toggle('hidden');hint()};
 $('bSave').onclick=async()=>{
   const category=$('bCat').value,monthly_limit=parseFloat($('bLim').value);
   if(!monthly_limit||monthly_limit<=0)return;
@@ -271,10 +282,13 @@ function rangeStart(p){const n=new Date(),s=new Date(n);s.setHours(0,0,0,0);
 function renderHome(){
   const rs=rangeStart(periodF),pe=rs?entries.filter(e=>new Date(e.date+'T00:00:00')>=rs):entries;
   const t=ty=>sum(pe.filter(e=>e.type===ty)),inc=t('income'),exp=t('expense'),sv=t('saving');
-  $('tInc').textContent=fmt(inc);$('tOut').textContent=fmt(exp+sv);$('tBal').textContent=fmt(inc-exp-sv);
-  const l=[...(typeF==='all'?pe:pe.filter(e=>e.type===typeF))].sort((a,b)=>new Date(b.date)-new Date(a.date));
-  $('list').innerHTML=l.length?l.map(e=>`<div class="entry"><div><div class="c">${esc(e.category)}</div>${e.note?`<div class="n">${esc(e.note)}</div>`:''}<div class="d">${new Date(e.date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</div></div>
-    <div style="display:flex;align-items:center;gap:6px"><div class="a" style="color:${e.type==='income'?'var(--inc)':e.type==='saving'?'var(--ac)':'var(--exp)'}">${e.type==='income'?'+':'-'}${fmt(e.amount)}</div><button class="del" data-del="${e.id}">✕</button></div></div>`).join('')
+  $('tInc').textContent=fmt(inc);$('tOut').textContent=fmt(exp);$('tSav').textContent=fmt(sv);$('tBal').textContent=fmt(inc-exp-sv);
+  const l=typeF==='all'?pe:pe.filter(e=>e.type===typeF),g={};
+  l.forEach(e=>(g[e.date]=g[e.date]||[]).push(e));
+  const row=e=>`<div class="entry"><div><div class="c">${esc(e.category)}</div>${e.note?`<div class="n">${esc(e.note)}</div>`:''}</div>
+    <div style="display:flex;align-items:center;gap:6px"><div class="a" style="color:${e.type==='income'?'var(--inc)':e.type==='saving'?'var(--ac)':'var(--exp)'}">${e.type==='income'?'+':'-'}${fmt(e.amount)}</div><button class="del" data-del="${e.id}">✕</button></div></div>`;
+  $('list').innerHTML=l.length?Object.keys(g).sort().reverse().map(d=>{const sp=sum(g[d].filter(e=>e.type==='expense'));
+    return `<div class="dayh"><span>${new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</span><span>${sp?fmt(sp)+' spent':''}</span></div>`+g[d].map(row).join('')}).join('')
     :'<div class="empty">No entries in this period. Tap + to add one.</div>';
 }
 $('list').onclick=async e=>{const b=e.target.closest('[data-del]');if(!b)return;
@@ -290,7 +304,7 @@ function renderInsights(){
   else{$('sRate').textContent='–';$('sRate').style.color='';$('sNote').textContent='add income to see this'}
   if(ex1>0){const d=Math.round((ex-ex1)/ex1*100);$('sDelta').textContent=(d>0?'+':'')+d+'%';$('sDelta').style.color=d>0?'var(--exp)':'var(--inc)';$('sDeltaN').textContent=fmt(ex)+' vs '+fmt(ex1)}
   else{$('sDelta').textContent='–';$('sDelta').style.color='';$('sDeltaN').textContent='no data last month'}
-  renderHeat();renderDonut();renderTrend();renderCmp();
+  renderNotes();renderHeat();renderDonut();renderTrend();renderCmp();
 }
 function renderHeat(){
   const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+hmOff);
@@ -325,6 +339,18 @@ function renderCmp(){
   $('cmp').innerHTML=ks.length?'<div class="sm" style="margin-bottom:6px"><span style="color:var(--ac)">■</span> This month &nbsp; <span style="opacity:.4;color:var(--ac)">■</span> Last month</div>'+ks.map(k=>`<div class="row"><span style="width:84px">${esc(k)}</span><div class="bars"><div style="width:${(a[k]||0)/mx*100}%;background:var(--ac)"></div><div style="width:${(b[k]||0)/mx*100}%;background:var(--ac);opacity:.4"></div></div><span style="width:70px;text-align:right">${fmt(a[k]||0)}</span></div>`).join(''):'<div class="empty">Add expenses to compare months.</div>';
 }
 
+function renderNotes(){
+  const m=mkey(0),ex=inM(m,['expense']),o=[];
+  if(!ex.length){$('notes').innerHTML='<p style="color:var(--mu)">Add some expenses to see notes.</p>';return}
+  const tot=sum(ex),c=Object.entries(byCat(m)).sort((a,b)=>b[1]-a[1])[0];
+  o.push(`${c[0]} is ${Math.round(c[1]/tot*100)}% of this month’s spending.`);
+  o.push(`Without rent, you spend about ${fmt(sum(ex.filter(e=>e.category!=='PG / Rent'))/new Date().getDate())} a day.`);
+  const f={};ex.filter(e=>e.note).forEach(e=>{const k=e.note.toLowerCase();f[k]=f[k]||{n:0,s:0};f[k].n++;f[k].s+=e.amount});
+  const t=Object.entries(f).sort((a,b)=>b[1].n-a[1].n)[0];
+  if(t&&t[1].n>=3)o.push(`Most repeated: “${t[0]}” ${t[1].n} times, ${fmt(t[1].s)} in total.`);
+  const sm=ex.filter(e=>e.amount<=100);o.push(`${sm.length} small spends (₹100 or less) add up to ${fmt(sum(sm))}.`);
+  $('notes').innerHTML=o.map(x=>`<p>${esc(x)}</p>`).join('');
+}
 // ---------- navigation ----------
 document.querySelectorAll('nav .tb').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav .tb').forEach(x=>x.classList.toggle('on',x===b));
@@ -332,70 +358,74 @@ document.querySelectorAll('nav .tb').forEach(b=>b.onclick=()=>{
 function renderAll(){renderHome();renderBudgets();renderBanner();renderInsights()}
 function toast(msg,ms=3500){const t=$('toast');t.textContent=msg;t.classList.remove('hidden');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add('hidden'),ms)}
 
-// ---------- add sheet (manual + screenshot) ----------
-const merch=()=>{try{return JSON.parse(localStorage.getItem(MK))||{}}catch{return {}}};
+// ---------- add sheet: voice + quick add + manual ----------
+let hist={};
+function buildHist(){
+  const c={};entries.filter(e=>e.note).forEach(e=>{const k=e.note.trim().toLowerCase();(c[k]=c[k]||{})[e.category]=(c[k][e.category]||0)+1});
+  hist={};Object.entries(c).forEach(([k,v])=>hist[k]=Object.entries(v).sort((a,b)=>b[1]-a[1])[0][0]);
+}
+function drawQuick(){
+  const q={};entries.filter(e=>e.note&&e.type!=='income').forEach(e=>{const k=e.note.trim().toLowerCase()+'|'+e.category;(q[k]=q[k]||{n:0,e}).n++});
+  const top=Object.values(q).sort((a,b)=>b.n-a.n).slice(0,6);
+  $('quick').innerHTML=top.length?top.map(x=>`<button type="button" data-q="${x.e.id}">${esc(x.e.note)} ${fmt(x.e.amount)}</button>`).join(''):'<span class="sm">Your most used entries show here.</span>';
+}
+$('quick').onclick=e=>{const b=e.target.closest('[data-q]');if(!b)return;const x=entries.find(y=>y.id===b.dataset.q);if(!x)return;
+  setType(x.type);$('amt').value=x.amount;$('note').value=x.note;selCat=x.category;drawCats()};
 function drawCats(){$('cats').innerHTML=CATS.map(c=>`<button type="button" class="cat ${c===selCat?'on':''} ${c===sug&&!selCat?'sug':''}" data-c="${esc(c)}">${esc(c)}</button>`).join('');$('save').disabled=!selCat}
 function setType(t){selType=t;[...$('typeSeg').children].forEach(b=>b.classList.toggle('on',b.dataset.ty===t))}
-function openSheet(){selCat=null;sug=null;setType('expense');$('amt').value='';$('note').value='';$('dt').value=iso(new Date());$('shot').value='';
-  $('st').textContent='Read on your device. The image is never saved or uploaded.';drawCats();$('ov').classList.remove('hidden')}
-const closeSheet=()=>{$('ov').classList.add('hidden');$('shot').value=''};
+function openSheet(){buildHist();drawQuick();selCat=null;sug=null;setType('expense');$('amt').value='';$('note').value='';$('dt').value=iso(new Date());
+  $('st').textContent='Say: “tea 20 rupees” or “got salary 29000”';drawCats();$('ov').classList.remove('hidden')}
+const closeSheet=()=>{$('ov').classList.add('hidden');if(rec&&listening)rec.stop()};
 $('fab').onclick=openSheet;$('close').onclick=closeSheet;$('ov').onclick=e=>{if(e.target===$('ov'))closeSheet()};
 $('typeSeg').onclick=e=>{const b=e.target.closest('button');if(b)setType(b.dataset.ty)};
 $('cats').onclick=e=>{const b=e.target.closest('[data-c]');if(b){selCat=b.dataset.c;drawCats()}};
-$('note').oninput=()=>{const s=merch()[$('note').value.trim().toLowerCase()];if(s&&!selCat){sug=s;drawCats()}};
+$('note').oninput=()=>{const s=hist[$('note').value.trim().toLowerCase()];if(s&&!selCat){sug=s;drawCats()}};
 $('save').onclick=async()=>{
   const amount=parseFloat($('amt').value);if(!amount||amount<=0||!selCat)return toast('Enter an amount and pick a category');
   const ne={id:Date.now().toString(),type:selType,amount,category:selCat,date:$('dt').value,note:$('note').value.trim()};
   const b=budgets.find(x=>x.category===ne.category),before=b?bstat(b).st:'ok';
   const {error}=await sb.from('entries').insert(ne);
   if(error)return toast('Could not save: '+error.message);
-  entries.unshift(ne);
-  if(ne.note){const m=merch();m[ne.note.toLowerCase()]=ne.category;localStorage.setItem(MK,JSON.stringify(m))}
-  closeSheet();renderAll();
+  entries.unshift(ne);closeSheet();renderAll();
   if(b&&ne.type!=='income'){const s=bstat(b);
     if(s.st==='over')toast(`🚨 ${b.category} is over budget by ${fmt(-s.left)}`,5000);
     else if(s.st==='warn'&&before==='ok')toast(`⚠️ ${b.category} is at ${s.pct}% · ${fmt(s.left)} left`,5000);
     else toast('Entry added')}else toast('Entry added');
 };
 
-// ---------- screenshot reading (on-device OCR, image kept in memory only) ----------
-const loadOCR=()=>window.Tesseract?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});
-function parseShot(t){
-  const L=t.split('\n').map(s=>s.trim()).filter(Boolean),r={type:'expense'};
-  if(/received from|money received|credited/i.test(t))r.type='income';
-  let m=t.match(/(?:₹|Rs\.?|INR)\s?([\d,]+(?:\.\d{1,2})?)/i);
-  if(!m)for(const l of L){const x=l.match(/^\D{0,2}([\d,]{1,9}(?:\.\d{1,2})?)\D{0,2}$/);if(x&&!/:/.test(l)&&!/^(19|20)\d\d$/.test(x[1])){m=x;break}}
-  if(m)r.amount=parseFloat(m[1].replace(/,/g,''));
-  for(let i=0;i<L.length;i++){const x=L[i].match(/^(?:paid to|sent to|payment to|received from|to|from)\b[:\s]*(.*)$/i);
-    if(x){const n=(x[1]||L[i+1]||'').replace(/[^\w .&'-]/g,'').trim();if(n){r.note=n.slice(0,40);break}}}
-  const D=t.match(/(\d{1,2})\s?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*,?\s?(\d{4})/i);
-  if(D){const mo=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(D[2].toLowerCase())+1;r.date=`${D[3]}-${String(mo).padStart(2,'0')}-${String(D[1]).padStart(2,'0')}`}
+// ---------- voice (Chrome speech recognition; no audio is stored by the app) ----------
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,listening=false;
+const KEYS=[[/salary/,'Salary'],[/zerodha|stock|mutual fund|sip|invest/,'Zerodha Investment'],[/emergency/,'Emergency Fund'],[/phone fund/,'Phone Fund'],[/trading/,'Trading'],
+  [/rent|\bpg\b/,'PG / Rent'],[/recharge|airtel|jio|data pack/,'Recharge'],[/rapido|uber|ola|auto|bus|metro|cab|petrol|commut|ticket/,'Transport'],
+  [/tea|coffee|chai|snack|lunch|dinner|breakfast|food|biryani|pizza|juice|banana|ice ?cream|hotel|restaurant|fruit/,'Food'],[/mom|dad|amma|appa|sister|parents|family/,'Family']];
+function parseVoice(t){
+  const low=t.toLowerCase(),r={type:'expense'},m=low.match(/(\d[\d,]*(?:\.\d+)?)\s*(k\b|thousand)?/);
+  if(m)r.amount=parseFloat(m[1].replace(/,/g,''))*(m[2]?1000:1);
+  if(/salary|received|credited|income|refund|got paid/.test(low))r.type='income';
+  else if(/invest|saved|saving|sip|zerodha|mutual fund|emergency fund|phone fund/.test(low))r.type='saving';
+  const d=new Date();if(/yesterday/.test(low))d.setDate(d.getDate()-1);r.date=iso(d);
+  const h=Object.keys(hist).sort((a,b)=>b.length-a.length).find(k=>low.includes(k));
+  r.cat=h?hist[h]:(KEYS.find(([re])=>re.test(low))||[])[1];
+  const n=low.replace(/[₹\d,.]+|\b(k|thousand|rupees?|rs|inr|spent|paid|pay|for|on|to|got|received|yesterday|today|i|a|an|the|of|in|my|add|rupee)\b/g,' ').replace(/\s+/g,' ').trim();
+  r.note=n?n[0].toUpperCase()+n.slice(1):'';
   return r;
 }
-async function readShot(f){
-  if(!f)return;
-  $('st').textContent='Reading screenshot on your device…';
-  try{await loadOCR();const {data}=await Tesseract.recognize(f,'eng');const r=parseShot(data.text);
-    setType(r.type);if(r.amount)$('amt').value=r.amount;if(r.note)$('note').value=r.note;if(r.date)$('dt').value=r.date;
-    sug=r.note?merch()[r.note.toLowerCase()]:null;selCat=null;drawCats();
-    $('st').textContent=r.amount?'Check the details, then pick a category.':'Could not find the amount. Type it in, then pick a category.'}
-  catch(e){$('st').textContent='Could not read the image. You can type the entry instead.'}
-  f=null;$('shot').value='';
+function applyVoice(t){
+  const r=parseVoice(t);setType(r.type);if(r.amount)$('amt').value=r.amount;$('note').value=r.note;$('dt').value=r.date;selCat=r.cat||null;sug=null;drawCats();
+  $('st').textContent=`Heard: “${t}”. `+(!r.amount?'Type the amount. ':'')+(selCat?'Check it, then save.':'Pick a category.');
 }
-$('shot').onchange=e=>readShot(e.target.files[0]);
+$('mic').onclick=()=>{
+  if(!SR){$('st').textContent='Voice does not work in this browser. Use Chrome, or type below.';return}
+  if(listening){rec.stop();return}
+  rec=new SR();rec.lang=$('vlang').value;rec.interimResults=false;rec.maxAlternatives=1;
+  rec.onstart=()=>{listening=true;$('mic').classList.add('on');$('micT').textContent='Listening… tap to stop'};
+  rec.onend=()=>{listening=false;$('mic').classList.remove('on');$('micT').textContent='Tap and speak'};
+  rec.onerror=e=>{$('st').textContent=e.error==='not-allowed'?'Microphone is blocked. Allow it in Chrome site settings.':e.error==='no-speech'?'Did not hear anything. Try again.':'Voice error: '+e.error};
+  rec.onresult=e=>applyVoice(e.results[0][0].transcript);
+  try{rec.start()}catch(_){}
+};
 
-// ---------- share target (WhatsApp-style "Share → PaisaTrack") ----------
-async function checkShared(){
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
-  if(!new URLSearchParams(location.search).has('shared'))return;
-  history.replaceState(null,'',location.pathname);
-  try{
-    const reg=await navigator.serviceWorker.ready,sw=navigator.serviceWorker.controller||reg.active,ch=new MessageChannel();
-    const f=await new Promise(res=>{ch.port1.onmessage=e=>res(e.data);sw.postMessage('getShot',[ch.port2]);setTimeout(()=>res(null),3000)});
-    openSheet();
-    if(f)readShot(f);else $('st').textContent='Could not get the shared image. Tap “Scan a GPay screenshot” instead.';
-  }catch(e){openSheet()}
-}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 initApp();
 </script>
 </body>
