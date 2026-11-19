@@ -58,10 +58,10 @@ nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(sa
 nav .tb{display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--gb);background:var(--c2);width:48px;height:48px;border-radius:999px;color:var(--tx);font:700 13px inherit;font-family:inherit;padding:0;cursor:pointer}
 nav .tb span{display:none}nav .tb.on{width:auto;padding:0 18px;background:var(--nav);color:#16170f;border-color:transparent}nav .tb.on span{display:inline}
 .fab{width:56px;height:56px;border-radius:50%;border:0;background:var(--ac);color:var(--on);cursor:pointer;display:grid;place-items:center;padding:0}
-#ov{position:fixed;inset:0;background:rgba(10,12,4,.45);z-index:40;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
-#sheet{width:min(480px,100%);max-height:92vh;overflow:auto;background:var(--sheet);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid var(--gb);border-radius:34px 34px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));animation:up .22s ease-out}
+#ov,#cycOv{position:fixed;inset:0;background:rgba(10,12,4,.45);z-index:40;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+#sheet,#cycSheet{width:min(480px,100%);max-height:92vh;overflow:auto;background:var(--sheet);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid var(--gb);border-radius:34px 34px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));animation:up .22s ease-out}
 @keyframes up{from{transform:translateY(40px);opacity:0}}
-@media(prefers-reduced-motion:reduce){#sheet{animation:none}.fill{transition:none}}
+@media(prefers-reduced-motion:reduce){#sheet,#cycSheet{animation:none}.fill{transition:none}}
 label{font-size:12px;color:var(--mu);font-weight:600;display:block;margin:12px 0 6px}
 input,select{width:100%;border:1px solid var(--gb);background:var(--c2);color:var(--tx);padding:12px 16px;border-radius:20px;font:600 15px inherit;font-family:inherit}
 .cats{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.cat.sug{outline:2px dashed var(--ac)}

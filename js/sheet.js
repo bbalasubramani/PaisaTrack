@@ -1,6 +1,7 @@
 import {bstat} from './budget.js';
 import {CATS,CI} from './config.js';
 import {ic} from './icons.js';
+import {currentCycle,openCycle} from './cycle.js';
 import {renderAll} from './main.js';
 import {$,budgets,entries,esc,fmt,iso,sb,selCat,selType,setSelCat,setSelType,setSug,isLoan,sug,toast} from './state.js';
 import {listening,rec} from './voice.js';
@@ -46,6 +47,7 @@ $('save').onclick=async()=>{
   const {error}=await sb.from('entries').insert(ne);
   if(error)return toast('Could not save: '+error.message);
   entries.unshift(ne);closeSheet();renderAll();
+  if(ne.type==='income'&&ne.category==='Salary'&&(!currentCycle()||ne.date>currentCycle().start_date))openCycle({date:ne.date,salary:ne.amount});
   if(b&&ne.type!=='income'&&!isLoan(ne.type)){const s=bstat(b);
     if(s.st==='over')toast(`🚨 ${b.category} is over budget by ${fmt(-s.left)}`,5000);
     else if(s.st==='warn'&&before==='ok')toast(`⚠️ ${b.category} is at ${s.pct}% · ${fmt(s.left)} left`,5000);

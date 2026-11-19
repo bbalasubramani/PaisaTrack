@@ -1,9 +1,10 @@
 import {renderBanner,renderBudgets} from './budget.js';
 import {CI,CK} from './config.js';
-import {cfg,loadBudgets,loadEntries} from './db.js';
+import {cfg,loadBudgets,loadCycles,loadEntries} from './db.js';
 import {ic} from './icons.js';
 import {renderInsights} from './insights.js';
 import {$,entries,esc,fmt,iso,periodF,sb,setEntries,setPeriodF,setSb,setTypeF,sum,toGetBack,typeF} from './state.js';
+import {renderCycle} from './cycle.js';
 import './sheet.js';
 import './voice.js';
 
@@ -17,7 +18,7 @@ export function initApp(){
   if(!c||!c.url||!c.key){$('setup').classList.remove('hidden');$('app').classList.add('hidden');return}
   $('setup').classList.add('hidden');$('app').classList.remove('hidden');
   setSb(window.supabase.createClient(c.url,c.key));
-  Promise.all([loadEntries(),loadBudgets()]).then(()=>renderAll());
+  Promise.all([loadEntries(),loadBudgets(),loadCycles()]).then(()=>renderAll());
 }
 export async function saveCfg(){
   const url=$('supaUrl').value.trim(),key=$('supaKey').value.trim(),s=$('setupStatus');
@@ -53,7 +54,7 @@ $('period').onclick=e=>{const b=e.target.closest('button');if(!b)return;[...$('p
 document.querySelectorAll('nav .tb').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav .tb').forEach(x=>x.classList.toggle('on',x===b));
   ['home','ins','bud','set'].forEach(t=>$('t-'+t).classList.toggle('hidden',t!==b.dataset.t));window.scrollTo(0,0)});
-export function renderAll(){renderHome();renderBudgets();renderBanner();renderInsights()}
+export function renderAll(){renderHome();renderCycle();renderBudgets();renderBanner();renderInsights()}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 $('bell').onclick=()=>document.querySelector('nav [data-t=bud]').click();
 $('exportBtn').onclick=()=>{const q=v=>'"'+String(v).replace(/"/g,'""')+'"',r=entries.map(e=>[e.id,e.type,e.amount,e.category,e.date,e.note||''].map(q).join(','));
