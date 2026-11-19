@@ -61,9 +61,10 @@ create policy "public access" on budgets for all using (true);</code>
     <div class="tile"><div class="lbl">Spent</div><div class="mid exp" id="tOut">₹0</div></div>
     <div class="tile"><div class="lbl">Invested</div><div class="mid" id="tSav" style="color:var(--ac)">₹0</div></div>
     <div class="tile"><div class="lbl">Balance</div><div class="mid" id="tBal">₹0</div></div>
+    <div class="tile s2 hidden" id="lentTile"><div class="lbl">To get back</div><div class="mid" id="tLent" style="color:var(--warn)">₹0</div><div class="sm">Money you lent that is not returned yet. Not counted as spending.</div></div>
   </div>
   <div class="chips" id="filters">
-    <button data-f="all" class="on">All</button><button data-f="income">Income</button><button data-f="expense">Expense</button><button data-f="saving">Savings</button>
+    <button data-f="all" class="on">All</button><button data-f="income">Income</button><button data-f="expense">Expense</button><button data-f="saving">Savings</button><button data-f="lent">Lent</button>
   </div>
   <div id="sync" class="sm" style="text-align:center"></div>
   <div id="list"></div>
@@ -122,7 +123,7 @@ create policy "public access" on budgets for all using (true);</code>
   <select id="vlang" class="vl" aria-label="Voice language"><option value="en-IN">English</option><option value="hi-IN">Hindi</option><option value="ta-IN">Tamil</option><option value="kn-IN">Kannada</option></select>
   <div id="st">Say: “tea 20 rupees” or “got salary 29000”</div>
   <label>Quick add</label><div class="chips" id="quick"></div>
-  <div class="seg" id="typeSeg" style="margin:4px 0 0"><button data-ty="expense" class="on">Expense</button><button data-ty="income">Income</button><button data-ty="saving">Saving</button></div>
+  <div class="seg" id="typeSeg" style="margin:4px 0 0"><button data-ty="expense" class="on">Expense</button><button data-ty="income">Income</button><button data-ty="saving">Saving</button><button data-ty="lent">Lent</button><button data-ty="returned">Returned</button></div>
   <label>Amount (₹)</label><input type="number" id="amt" min="0" step="0.01" placeholder="0">
   <label>Date</label><input type="date" id="dt">
   <label>Note</label><input type="text" id="note" placeholder="e.g. tea">

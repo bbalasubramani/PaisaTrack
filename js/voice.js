@@ -9,7 +9,9 @@ export const KEYS=[[/salary/,'Salary'],[/zerodha|stock|mutual fund|sip|invest/,'
 export function parseVoice(t){
   const low=t.toLowerCase(),r={type:'expense'},m=low.match(/(\d[\d,]*(?:\.\d+)?)\s*(k\b|thousand)?/);
   if(m)r.amount=parseFloat(m[1].replace(/,/g,''))*(m[2]?1000:1);
-  if(/salary|received|credited|income|refund|got paid/.test(low))r.type='income';
+  if(/\blent\b|\blend\b/.test(low))r.type='lent';
+  else if(/returned|paid me back|gave back|got back/.test(low))r.type='returned';
+  else if(/salary|received|credited|income|refund|got paid/.test(low))r.type='income';
   else if(/invest|saved|saving|sip|zerodha|mutual fund|emergency fund|phone fund/.test(low))r.type='saving';
   const d=new Date();if(/yesterday/.test(low))d.setDate(d.getDate()-1);r.date=iso(d);
   const h=Object.keys(hist).sort((a,b)=>b.length-a.length).find(k=>low.includes(k));
@@ -20,7 +22,7 @@ export function parseVoice(t){
 }
 export function applyVoice(t){
   const r=parseVoice(t);setType(r.type);if(r.amount)$('amt').value=r.amount;$('note').value=r.note;$('dt').value=r.date;setSelCat(r.cat||null);setSug(null);drawCats();
-  $('st').textContent=`Heard: “${t}”. `+(!r.amount?'Type the amount. ':'')+(selCat?'Check it, then save.':'Pick a category.');
+  $('st').textContent=`Heard: “${t}”. `+(!r.amount?'Type the amount. ':'')+(selCat||r.type==='lent'||r.type==='returned'?'Check it, then save.':'Pick a category.');
 }
 $('mic').onclick=()=>{
   if(!SR){$('st').textContent='Voice does not work in this browser. Use Chrome, or type below.';return}

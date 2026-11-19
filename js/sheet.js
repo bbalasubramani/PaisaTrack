@@ -2,7 +2,7 @@ import {bstat} from './budget.js';
 import {CATS,CI} from './config.js';
 import {ic} from './icons.js';
 import {renderAll} from './main.js';
-import {$,budgets,entries,esc,fmt,iso,sb,selCat,selType,setSelCat,setSelType,setSug,sug,toast} from './state.js';
+import {$,budgets,entries,esc,fmt,iso,sb,selCat,selType,setSelCat,setSelType,setSug,isLoan,sug,toast} from './state.js';
 import {listening,rec} from './voice.js';
 
 $('dt').value=iso(new Date());
@@ -39,13 +39,14 @@ $('typeSeg').onclick=e=>{const b=e.target.closest('button');if(b)setType(b.datas
 $('cats').onclick=e=>{const b=e.target.closest('[data-c]');if(b){setSelCat(b.dataset.c);drawCats()}};
 $('note').oninput=()=>{const s=hist[$('note').value.trim().toLowerCase()];if(s&&!selCat){setSug(s);drawCats()}};
 $('save').onclick=async()=>{
-  const amount=parseFloat($('amt').value);if(!amount||amount<=0||!selCat)return toast('Enter an amount and pick a category');
-  const ne={id:Date.now().toString(),type:selType,amount,category:selCat,date:$('dt').value,note:$('note').value.trim()};
+  const amount=parseFloat($('amt').value);const cat=selCat||(isLoan(selType)?'Other':null);
+  if(!amount||amount<=0||!cat)return toast('Enter an amount and pick a category');
+  const ne={id:Date.now().toString(),type:selType,amount,category:cat,date:$('dt').value,note:$('note').value.trim()};
   const b=budgets.find(x=>x.category===ne.category),before=b?bstat(b).st:'ok';
   const {error}=await sb.from('entries').insert(ne);
   if(error)return toast('Could not save: '+error.message);
   entries.unshift(ne);closeSheet();renderAll();
-  if(b&&ne.type!=='income'){const s=bstat(b);
+  if(b&&ne.type!=='income'&&!isLoan(ne.type)){const s=bstat(b);
     if(s.st==='over')toast(`🚨 ${b.category} is over budget by ${fmt(-s.left)}`,5000);
     else if(s.st==='warn'&&before==='ok')toast(`⚠️ ${b.category} is at ${s.pct}% · ${fmt(s.left)} left`,5000);
     else toast('Entry added')}else toast('Entry added');

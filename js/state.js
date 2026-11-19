@@ -19,3 +19,8 @@ export const mkey=off=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-
 export const inM=(m,types)=>entries.filter(e=>e.date.slice(0,7)===m&&types.includes(e.type));
 export const sum=a=>a.reduce((s,e)=>s+e.amount,0);
 export function toast(msg,ms=3500){const t=$('toast');t.textContent=msg;t.classList.remove('hidden');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add('hidden'),ms)}
+
+// ---------- money lent ----------
+// lent = money you gave to someone. returned = money they gave back. Neither is spending.
+export const isLoan=t=>t==='lent'||t==='returned';
+export const toGetBack=()=>sum(entries.filter(e=>e.type==='lent'))-sum(entries.filter(e=>e.type==='returned'));

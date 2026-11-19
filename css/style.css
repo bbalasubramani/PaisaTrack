@@ -119,3 +119,4 @@ button:hover .an,.tb.on .an,.entry:hover .an,.wl.on .an{animation:var(--a) var(-
 @keyframes squash3{50%{transform:scaleY(.3)}}
 @keyframes sideL{35%{transform:translateX(-1px)}70%{transform:translateX(.3px)}}
 @keyframes sideR{35%{transform:translateX(1px)}70%{transform:translateX(-.3px)}}
+#typeSeg button{font-size:12px;padding:9px 2px}

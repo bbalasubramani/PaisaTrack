@@ -3,7 +3,7 @@ import {CI,CK} from './config.js';
 import {cfg,loadBudgets,loadEntries} from './db.js';
 import {ic} from './icons.js';
 import {renderInsights} from './insights.js';
-import {$,entries,esc,fmt,iso,periodF,sb,setEntries,setPeriodF,setSb,setTypeF,sum,typeF} from './state.js';
+import {$,entries,esc,fmt,iso,periodF,sb,setEntries,setPeriodF,setSb,setTypeF,sum,toGetBack,typeF} from './state.js';
 import './sheet.js';
 import './voice.js';
 
@@ -34,12 +34,13 @@ export function rangeStart(p){const n=new Date(),s=new Date(n);s.setHours(0,0,0,
   if(p==='weekly')s.setDate(n.getDate()-(n.getDay()===0?6:n.getDay()-1));else if(p==='monthly')s.setDate(1);else if(p!=='daily')return null;return s}
 export function renderHome(){
   const rs=rangeStart(periodF),pe=rs?entries.filter(e=>new Date(e.date+'T00:00:00')>=rs):entries;
-  const t=ty=>sum(pe.filter(e=>e.type===ty)),inc=t('income'),exp=t('expense'),sv=t('saving');
-  $('tInc').textContent=fmt(inc);$('tOut').textContent=fmt(exp);$('tSav').textContent=fmt(sv);$('tBal').textContent=fmt(inc-exp-sv);
-  const l=typeF==='all'?pe:pe.filter(e=>e.type===typeF),g={};
+  const t=ty=>sum(pe.filter(e=>e.type===ty)),inc=t('income'),exp=t('expense'),sv=t('saving'),lent=t('lent'),ret=t('returned');
+  $('tInc').textContent=fmt(inc);$('tOut').textContent=fmt(exp);$('tSav').textContent=fmt(sv);$('tBal').textContent=fmt(inc-exp-sv-lent+ret);
+  $('lentTile').classList.toggle('hidden',!entries.some(e=>e.type==='lent'));$('tLent').textContent=fmt(toGetBack());
+  const l=typeF==='all'?pe:typeF==='lent'?pe.filter(e=>e.type==='lent'||e.type==='returned'):pe.filter(e=>e.type===typeF),g={};
   l.forEach(e=>(g[e.date]=g[e.date]||[]).push(e));
-  const row=e=>`<div class="entry"><div style="display:flex;align-items:center;gap:12px"><span class="eb">${ic(CI[e.category]||'other')}</span><div><div class="c">${esc(e.category)}</div>${e.note?`<div class="n">${esc(e.note)}</div>`:''}</div></div>
-    <div style="display:flex;align-items:center;gap:6px"><div class="a" style="color:${e.type==='income'?'var(--inc)':e.type==='saving'?'var(--ac)':'var(--exp)'}">${e.type==='income'?'+':'-'}${fmt(e.amount)}</div><button class="del" data-del="${e.id}">✕</button></div></div>`;
+  const row=e=>`<div class="entry"><div style="display:flex;align-items:center;gap:12px"><span class="eb">${ic(CI[e.category]||'other')}</span><div><div class="c">${esc(e.type==='lent'?'Lent':e.type==='returned'?'Returned':e.category)}</div>${e.note?`<div class="n">${esc(e.note)}</div>`:''}</div></div>
+    <div style="display:flex;align-items:center;gap:6px"><div class="a" style="color:${{income:'var(--inc)',returned:'var(--inc)',saving:'var(--ac)',lent:'var(--warn)'}[e.type]||'var(--exp)'}">${e.type==='income'||e.type==='returned'?'+':'-'}${fmt(e.amount)}</div><button class="del" data-del="${e.id}">✕</button></div></div>`;
   $('list').innerHTML=l.length?Object.keys(g).sort().reverse().map(d=>{const sp=sum(g[d].filter(e=>e.type==='expense'));
     return `<div class="dayh"><span>${new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</span><span>${sp?fmt(sp)+' spent':''}</span></div>`+g[d].map(row).join('')}).join('')
     :'<div class="empty">No entries in this period. Tap + to add one.</div>';
