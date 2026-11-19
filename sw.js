@@ -1,5 +1,5 @@
 // Change this number every time you deploy. A new number makes phones drop old files.
-const CACHE = 'paisatrack-v4';
+const CACHE = 'paisatrack-v5';
 
 // Every file the app needs. Add new files here.
 const FILES = [
