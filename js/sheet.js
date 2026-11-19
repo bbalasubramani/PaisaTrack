@@ -1,5 +1,5 @@
 import {bstat} from './budget.js';
-import {CATS,CI} from './config.js';
+import {CATS,CI,SIP_CAT} from './config.js';
 import {ic} from './icons.js';
 import {currentCycle,openCycle} from './cycle.js';
 import {renderAll} from './main.js';
@@ -42,7 +42,7 @@ $('note').oninput=()=>{const s=hist[$('note').value.trim().toLowerCase()];if(s&&
 $('save').onclick=async()=>{
   const amount=parseFloat($('amt').value);const cat=selCat||(isLoan(selType)?'Other':null);
   if(!amount||amount<=0||!cat)return toast('Enter an amount and pick a category');
-  const ne={id:Date.now().toString(),type:selType,amount,category:cat,date:$('dt').value,note:$('note').value.trim()};
+  const ne={id:Date.now().toString(),type:cat===SIP_CAT?'saving':selType,amount,category:cat,date:$('dt').value,note:$('note').value.trim()};
   const b=budgets.find(x=>x.category===ne.category),before=b?bstat(b).st:'ok';
   const {error}=await sb.from('entries').insert(ne);
   if(error)return toast('Could not save: '+error.message);
