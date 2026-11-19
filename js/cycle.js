@@ -1,4 +1,4 @@
-import {SIP_CAT,SIP_DAY} from './config.js';
+import {LENT_FROM_SPEND,SIP_CAT,SIP_DAY} from './config.js';
 import {ic} from './icons.js';
 import {renderAll} from './main.js';
 import {$,cycles,dm,entries,fmt,iso,sb,setCycles,sum,toast} from './state.js';
@@ -16,9 +16,17 @@ export const sipPaid=(c,end)=>sum(entries.filter(e=>e.type==='saving'&&e.categor
 // SIP is due on the first SIP_DAY (5th) on or after the cycle start
 export function sipDue(c){const s=new Date(c.start_date+'T00:00:00');let d=new Date(s.getFullYear(),s.getMonth(),SIP_DAY);if(d<s)d=new Date(s.getFullYear(),s.getMonth()+1,SIP_DAY);return iso(d)}
 
+// What Spend should hold now: keep - spent - SIP paid (all from the cycle start).
+// If LENT_FROM_SPEND is true, also - lent + returned.
+export function expectedBalance(c){
+  const inC=t=>sum(entries.filter(e=>e.type===t&&e.date>=c.start_date));
+  return c.keep_amount-cycleSpent(c)-sipPaid(c)+(LENT_FROM_SPEND?inC('returned')-inC('lent'):0);
+}
+
 // ---------- the card on the Budgets tab ----------
 export function renderCycle(){
   const c=currentCycle();
+  $('balHome').classList.toggle('hidden',!c);
   if(!c){$('cycCard').innerHTML='<div class="empty">No salary cycle yet. Tap “+ New cycle” and use your last salary day.</div>';return}
   const sp=cycleSpent(c),left=c.budget-sp,p=cycles[1],paid=sipPaid(c),sm='font-size:12px;color:var(--mu);margin-top:6px';
   let h=`<div class="tile" style="margin-bottom:14px"><div class="lbl">Cycle from ${dm(c.start_date)}</div>
@@ -29,14 +37,32 @@ export function renderCycle(){
   if(!c.moved&&c.start_spend_balance!=null){const net=c.keep_amount-c.start_spend_balance;
     h+=`<div class="alert warn" style="margin-top:12px"><span>${ic('alert')}</span><span>Leftover ${fmt(c.start_spend_balance)} back to Vault. Move ${fmt(c.keep_amount)} to Spend. ${net>=0?'(Take '+fmt(net)+' from Vault.)':'(Put '+fmt(-net)+' back in Vault.)'}</span></div><button class="go" id="cycMoved">I moved it</button>`}
   if(p&&p.closed)h+=`<div style="${sm}">Last cycle: spent ${fmt(cycleSpent(p,c.start_date))} of ${fmt(p.budget)}${p.overspend>0?' · overspent '+fmt(p.overspend):''}${p.missing>0?' · not logged '+fmt(p.missing):p.missing<0?' · '+fmt(-p.missing)+' more than expected':''}</div>`;
-  $('cycCard').innerHTML=h+'</div>';
+  $('cycCard').innerHTML=h+'<button class="go" id="balOpen" style="margin-top:12px">Check Spend balance</button></div>';
 }
 $('cycCard').onclick=async e=>{
+  if(e.target.closest('#balOpen'))return openBal();
   if(!e.target.closest('#cycMoved'))return;const c=currentCycle();
   const {error}=await sb.from('cycles').update({moved:true}).eq('id',c.id);
   if(error)return toast('Could not save: '+error.message);
   setCycles(cycles.map(x=>x.id===c.id?{...x,moved:true}:x));renderAll();
 };
+
+// ---------- balance check ----------
+const money=v=>v<0?'-'+fmt(-v):fmt(v);
+function balCalc(){
+  const c=currentCycle(),exp=expectedBalance(c),has=$('balIn').value!=='',real=num('balIn'),diff=Math.round(exp-real);   // paise ignored
+  let h=`Should be in Spend: <b>${money(exp)}</b><br><span style="color:var(--mu)">keep ${fmt(c.keep_amount)} − spent ${fmt(cycleSpent(c))} − SIP paid ${fmt(sipPaid(c))}`
+    +`${LENT_FROM_SPEND?' − lent + returned':''}</span>`;
+  if(has)h+=`<br>You have: <b>${fmt(real)}</b><br>`+(diff>0?`<b style="color:var(--warn)">${fmt(diff)} less than expected.</b> Some spending is not logged.`:diff<0?`<b style="color:var(--warn)">${fmt(-diff)} more than expected.</b> Maybe one entry is logged twice, or money came in.`:'<b>It matches.</b> Good.');
+  $('balOut').innerHTML=h;
+}
+export function openBal(){
+  if(!currentCycle())return toast('Start a salary cycle first');
+  $('balIn').value='';balCalc();$('balOv').classList.remove('hidden');
+}
+$('balIn').oninput=balCalc;
+$('balClose').onclick=()=>$('balOv').classList.add('hidden');
+$('balHome').onclick=openBal;
 
 // ---------- reminders (shown with the budget alerts) ----------
 export function cycleAlerts(){
