@@ -37,15 +37,32 @@ export function renderCycle(){
   if(!c.moved&&c.start_spend_balance!=null){const net=c.keep_amount-c.start_spend_balance;
     h+=`<div class="alert warn" style="margin-top:12px"><span>${ic('alert')}</span><span>Leftover ${fmt(c.start_spend_balance)} back to Vault. Move ${fmt(c.keep_amount)} to Spend. ${net>=0?'(Take '+fmt(net)+' from Vault.)':'(Put '+fmt(-net)+' back in Vault.)'}</span></div><button class="go" id="cycMoved">I moved it</button>`}
   if(p&&p.closed)h+=`<div style="${sm}">Last cycle: spent ${fmt(cycleSpent(p,c.start_date))} of ${fmt(p.budget)}${p.overspend>0?' · overspent '+fmt(p.overspend):''}${p.missing>0?' · not logged '+fmt(p.missing):p.missing<0?' · '+fmt(-p.missing)+' more than expected':''}</div>`;
-  $('cycCard').innerHTML=h+'<button class="go" id="balOpen" style="margin-top:12px">Check Spend balance</button></div>';
+  $('cycCard').innerHTML=h+'<button class="go" id="balOpen" style="margin-top:12px">Check Spend balance</button><button class="pill" id="cycDel" style="margin-top:12px;color:var(--exp)">Delete this cycle</button></div>';
 }
 $('cycCard').onclick=async e=>{
   if(e.target.closest('#balOpen'))return openBal();
+  if(e.target.closest('#cycDel'))return delCycle();
   if(!e.target.closest('#cycMoved'))return;const c=currentCycle();
   const {error}=await sb.from('cycles').update({moved:true}).eq('id',c.id);
   if(error)return toast('Could not save: '+error.message);
   setCycles(cycles.map(x=>x.id===c.id?{...x,moved:true}:x));renderAll();
 };
+
+// ---------- delete the current cycle (to enter it again) ----------
+async function delCycle(){
+  const c=currentCycle(),p=cycles[1];
+  if(!confirm('Delete the cycle from '+dm(c.start_date)+'?'+(p&&p.closed?' The last cycle will open again.':'')+' Your entries are not deleted.'))return;
+  const r=await sb.from('cycles').delete().eq('id',c.id);
+  if(r.error)return toast('Could not delete: '+r.error.message,5000);
+  let list=cycles.slice(1);
+  if(p&&p.closed){                       // the last cycle was closed by this one: open it again
+    const patch={closed:false,end_spend_balance:null,expected_balance:null,missing:null,overspend:0};
+    const u=await sb.from('cycles').update(patch).eq('id',p.id);
+    if(u.error)toast('Deleted, but the last cycle did not open again: '+u.error.message,5000);
+    else list=list.map(x=>x.id===p.id?{...x,...patch}:x);
+  }
+  setCycles(list);renderAll();toast('Cycle deleted. Tap + New cycle to enter it again.');
+}
 
 // ---------- balance check ----------
 const money=v=>v<0?'-'+fmt(-v):fmt(v);
