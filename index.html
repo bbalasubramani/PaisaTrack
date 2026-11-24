@@ -52,8 +52,18 @@ create policy "public access" on budgets for all using (true);</code>
     <div class="sm" id="mBud" style="margin-top:12px"></div>
    </div>
   </div>
+
+  <!-- 1-Tap Quick Action Loggers -->
+  <div style="margin:0 0 10px">
+    <div class="lbl" style="margin-bottom:6px">Quick Log (1-Tap)</div>
+    <div class="qrow" id="quickPills"></div>
+  </div>
+
   <div id="alertsHome"></div>
-  <button class="pill hidden" id="balHome" style="margin:0 0 12px">Check Spend balance</button>
+  <div style="display:flex;gap:8px;margin:0 0 12px">
+    <button class="pill hidden" id="balHome" style="flex:1">Check Spend balance</button>
+    <button class="pill" id="clipBtn" style="flex:1;background:var(--card)">📋 Paste UPI SMS</button>
+  </div>
   <div class="seg" id="period">
     <button data-p="daily">Daily</button><button data-p="weekly">Weekly</button><button data-p="monthly" class="on">Monthly</button><button data-p="all">All</button>
   </div>
@@ -61,9 +71,22 @@ create policy "public access" on budgets for all using (true);</code>
     <div class="tile"><div class="lbl">Income</div><div class="mid inc" id="tInc">₹0</div></div>
     <div class="tile"><div class="lbl">Spent</div><div class="mid exp" id="tOut">₹0</div></div>
     <div class="tile"><div class="lbl">Invested</div><div class="mid" id="tSav" style="color:var(--ac)">₹0</div></div>
-    <div class="tile"><div class="lbl">Balance</div><div class="mid" id="tBal">₹0</div></div>
-    <div class="tile s2 hidden" id="lentTile"><div class="lbl">To get back</div><div class="mid" id="tLent" style="color:var(--warn)">₹0</div><div class="sm">Money you lent that is not returned yet. Not counted as spending.</div></div>
+    <div class="tile"><div class="lbl" id="lblBal">Balance</div><div class="mid" id="tBal">₹0</div><div class="sm" id="balSub"></div></div>
+    <div class="tile s2 hidden" id="lentTile">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div class="lbl">To get back (Borrowers Ledger)</div><div class="mid" id="tLent" style="color:var(--warn)">₹0</div></div>
+      </div>
+      <div class="sm">Money you lent that is not returned yet. Not counted as spending.</div>
+      <div id="borrowersLedger" style="margin-top:10px"></div>
+    </div>
   </div>
+
+  <!-- Search & Category Filters -->
+  <div style="margin-bottom:10px">
+    <input type="text" id="searchIn" placeholder="🔍 Search note, person, or amount…" style="padding:10px 14px;border-radius:18px;margin-bottom:8px">
+    <div class="chips" id="catFilters" style="margin-bottom:4px"></div>
+  </div>
+
   <div class="chips" id="filters">
     <button data-f="all" class="on">All</button><button data-f="income">Income</button><button data-f="expense">Expense</button><button data-f="saving">Savings</button><button data-f="lent">Lent</button>
   </div>
@@ -76,8 +99,10 @@ create policy "public access" on budgets for all using (true);</code>
   <div class="bento">
     <div class="tile wh"><div class="lbl">Savings rate</div><div class="big" id="sRate">–</div><div class="sm" id="sNote">income − spent</div></div>
     <div class="tile"><div class="lbl">Spent vs last month</div><div class="big" id="sDelta">–</div><div class="sm" id="sDeltaN"></div></div>
+    <div class="tile s2"><div class="lbl">Chai & Munchies (Spends ≤ ₹100)</div><div id="chaiMeter"></div></div>
     <div class="tile s2"><div class="lbl">Range · daily spend this month, no rent</div><div class="ruler" id="ruler"></div><div class="rr"><span>Low<b id="rLo">–</b></span><span style="text-align:center">Average<b id="rAv">–</b></span><span style="text-align:right">High<b id="rHi">–</b></span></div></div>
     <div class="tile s2"><div class="title" style="margin:0 0 4px">Smart notes</div><div class="notes" id="notes"></div></div>
+    <div class="tile s2"><div class="title" style="margin:0 0 4px">Vault & Wealth Growth</div><div id="wealthTracker"></div></div>
     <div class="tile s2">
       <div class="title" style="margin:0"><span>Spending heatmap</span><span><button class="pill" id="hmPrev">‹</button> <button class="pill" id="hmNext">›</button></span></div>
       <div class="sm" id="hmTitle"></div><div class="hm" id="hm"></div><div class="sm" id="hmInfo">Tap a day</div>
@@ -95,7 +120,7 @@ create policy "public access" on budgets for all using (true);</code>
   <div id="alertsBud"></div>
   <div class="title">Salary cycle <button class="pill" id="cycNew">+ New cycle</button></div>
   <div id="cycCard"></div>
-  <div class="title">Monthly budget <button class="pill" id="togBud">+ Set budget</button></div>
+  <div class="title"><span>Monthly budget <span id="budTotalLbl" style="font-size:13px;color:var(--mu);font-weight:400"></span></span> <button class="pill" id="togBud">+ Set budget</button></div>
   <div class="tile hidden" id="budForm" style="margin-bottom:14px">
     <label style="margin-top:0">Category</label><select id="bCat"></select><div class="sm" id="bHint"></div>
     <label>Monthly limit (₹)</label><input type="number" id="bLim" min="1" placeholder="0">

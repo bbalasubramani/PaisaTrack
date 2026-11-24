@@ -1,5 +1,6 @@
-import {PAL} from './config.js';
-import {$,entries,esc,fmt,hmOff,inM,iso,mkey,setHmOff,sum} from './state.js';
+import {PAL,SIP_CAT} from './config.js';
+import {currentCycle} from './cycle.js';
+import {$,cycles,entries,esc,fmt,hmOff,inM,iso,mkey,setHmOff,sum} from './state.js';
 
 export function smooth(p){let d=`M${p[0][0]},${p[0][1]}`;for(let i=1;i<p.length;i++){const m=(p[i-1][0]+p[i][0])/2;d+=` C${m},${p[i-1][1]} ${m},${p[i][1]} ${p[i][0]},${p[i][1]}`}return d}
 export function dayV(off,n){const a=[];for(let i=n-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i-off);const k=iso(d);a.push(sum(entries.filter(e=>e.date===k&&e.type==='expense'&&e.category!=='PG / Rent'&&e.category!=='Zerodha Investment')))}return a}
@@ -15,7 +16,61 @@ export function renderInsights(){
   else{$('sRate').textContent='–';$('sRate').style.color='';$('sNote').textContent='add income to see this'}
   if(ex1>0){const d=Math.round((ex-ex1)/ex1*100);$('sDelta').textContent=(d>0?'+':'')+d+'%';$('sDelta').style.color=d>0?'var(--exp)':'var(--inc)';$('sDeltaN').textContent=fmt(ex)+' vs '+fmt(ex1)}
   else{$('sDelta').textContent='–';$('sDelta').style.color='';$('sDeltaN').textContent='no data last month'}
-  renderNotes();renderRange();renderHeat();renderDonut();renderTrend();renderCmp();
+  renderNotes();renderChaiMeter();renderWealth();renderRange();renderHeat();renderDonut();renderTrend();renderCmp();
+}
+
+// ---------- Chai & Munchies Micro-Spends Meter ----------
+export function renderChaiMeter(){
+  const c=currentCycle();
+  const pool=c?entries.filter(e=>e.date>=c.start_date):inM(mkey(0),['expense']);
+  const small=pool.filter(e=>e.type==='expense'&&e.amount<=100);
+  const tot=sum(small);
+  const days=c?Math.max(1,Math.ceil((new Date()-new Date(c.start_date+'T00:00:00'))/(1000*60*60*24))):new Date().getDate();
+  const avg=Math.round(tot/days);
+  
+  const counts={};
+  small.forEach(e=>{
+    const k=(e.note||e.category).toLowerCase().trim();
+    counts[k]=(counts[k]||0)+1;
+  });
+  const topList=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${k} (${v}x)`).join(', ');
+
+  const el=$('chaiMeter');
+  if(el){
+    el.innerHTML=`
+      <div class="mid" style="color:var(--warn)">${fmt(tot)} <span style="font-size:13px;color:var(--mu);font-weight:400">(${small.length} small spends · ~${fmt(avg)}/day)</span></div>
+      <div class="sm" style="margin-top:6px">Top snacks: ${esc(topList||'None yet')}</div>
+    `;
+  }
+}
+
+// ---------- Vault & Cumulative Wealth Tracker ----------
+export function renderWealth(){
+  // Total SIP invested over all time
+  const totalSip=sum(entries.filter(e=>e.type==='saving'));
+  // Total surplus retained in Vault from cycles or income
+  const totalSal=sum(entries.filter(e=>e.type==='income'&&e.category==='Salary'));
+  const totalSpentAll=sum(entries.filter(e=>e.type==='expense'));
+  const netVault=Math.max(0,totalSal-totalSpentAll-totalSip);
+
+  const el=$('wealthTracker');
+  if(el){
+    el.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+        <div style="padding:10px;background:var(--c2);border-radius:18px">
+          <div class="lbl">Total SIP Invested</div>
+          <div class="mid" style="color:var(--ac)">${fmt(totalSip)}</div>
+          <div class="sm">Zerodha wealth assets</div>
+        </div>
+        <div style="padding:10px;background:var(--c2);border-radius:18px">
+          <div class="lbl">Est. Vault Reserves</div>
+          <div class="mid" style="color:var(--inc)">${fmt(netVault)}</div>
+          <div class="sm">Unspent salary surplus</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:13px;font-weight:700">Total Tracked Net Worth: <span style="color:var(--ac)">${fmt(totalSip+netVault)}</span></div>
+    `;
+  }
 }
 export function renderRange(){
   const o={};inM(mkey(0),['expense']).filter(e=>e.category!=='PG / Rent'&&e.category!=='Zerodha Investment').forEach(e=>o[e.date]=(o[e.date]||0)+e.amount);

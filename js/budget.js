@@ -1,13 +1,16 @@
-import {BCATS,LIMIT,STRETCH} from './config.js';
+import {BCATS,LIMIT,RENT_CAT,STRETCH} from './config.js';
 import {ic} from './icons.js';
 import {renderWave} from './insights.js';
-import {currentCycle,cycleAlerts,cycleSpent} from './cycle.js';
+import {currentCycle,cycleAlerts,cycleRent,cycleSpent,rentTarget} from './cycle.js';
 import {renderAll} from './main.js';
 import {$,budgets,dm,entries,esc,fmt,inM,iso,mkey,sb,setBudgets,sum} from './state.js';
 
 // ---------- budgets & alerts ----------
 export function bstat(b,extra=0){
-  const spent=sum(inM(mkey(0),['expense','saving']).filter(e=>e.category===b.category))+extra;
+  const c=currentCycle();
+  // Count from cycle start when a salary cycle is active, otherwise calendar month
+  const pool=c?entries.filter(e=>e.date>=c.start_date):inM(mkey(0),['expense','saving']);
+  const spent=sum(pool.filter(e=>['expense','saving'].includes(e.type)&&e.category===b.category))+extra;
   const pct=Math.round(spent/b.monthly_limit*100),left=b.monthly_limit-spent;
   return {spent,pct,left,st:spent>b.monthly_limit?'over':pct>=80?'warn':'ok'};
 }
@@ -16,6 +19,8 @@ export function alertsHTML(){
   return a.map(x=>`<div class="alert ${x.st}"><span>${ic('alert')}</span><span>${esc(x.b.category)}: ${x.st==='over'?`over budget by ${fmt(-x.left)}`:`${x.pct}% used · ${fmt(x.left)} left`}</span></div>`)+cycleAlerts();
 }
 export function renderBudgets(){
+  const totB=sum(budgets.map(b=>b.monthly_limit));
+  const totLbl=$('budTotalLbl');if(totLbl)totLbl.textContent=totB>0?`· Total: ${fmt(totB)}`:'';
   $('budList').innerHTML=budgets.length?budgets.map(b=>{const s=bstat(b);
     return `<div class="bud"><div class="t"><span>${esc(b.category)}</span><span><b>${fmt(s.spent)}</b> <span style="color:var(--mu)">/ ${fmt(b.monthly_limit)}</span> <button class="del" data-bd="${b.id}">✕</button></span></div>
     <div class="track"><div class="fill ${s.st}" style="width:${Math.min(100,s.pct)}%"></div></div>
@@ -28,14 +33,35 @@ export function renderBanner(){
   const c=currentCycle(),lim=c?c.budget:LIMIT;   // with a cycle: its budget. Without: old monthly limit.
   $('mTitle').textContent=c?'Cycle from '+dm(c.start_date):new Date().toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   $('mOf').textContent='of '+fmt(lim);
-  const sp=c?cycleSpent(c):capSp(mkey(0)),left=lim-sp,pct=lim>0?Math.max(0,Math.round(left/lim*100)):0,n=new Date(),dl=new Date(n.getFullYear(),n.getMonth()+1,0).getDate()-n.getDate()+1;
-  $('mBig').textContent=fmt(sp);
+  const sp=c?cycleSpent(c):capSp(mkey(0)),left=lim-sp,pct=lim>0?Math.max(0,Math.round(left/lim*100)):0,n=new Date();
+  
+  // Calculate remaining days in cycle until next salary (approx 30 days from cycle start)
+  let dl;
+  if(c){
+    const sDate=new Date(c.start_date+'T00:00:00');
+    const nextSal=new Date(sDate.getFullYear(),sDate.getMonth()+1,sDate.getDate());
+    const now=new Date();now.setHours(0,0,0,0);
+    dl=Math.max(1,Math.ceil((nextSal-now)/(1000*60*60*24)));
+  }else{
+    dl=new Date(n.getFullYear(),n.getMonth()+1,0).getDate()-n.getDate()+1;
+  }
+
+  // Rent breakdown: Rent vs Discretionary daily expenses
+  const rent=c?cycleRent(c):sum(inM(mkey(0),['expense']).filter(e=>e.category===RENT_CAT));
+  const daily=Math.max(0,sp-rent);
+  $('mBig').innerHTML=`${fmt(sp)} ${rent>0?`<small style="font-size:13px;font-weight:400;color:rgba(255,255,255,.65);display:block;margin-top:2px">Rent ${fmt(rent)} · Daily ${fmt(daily)}</small>`:''}`;
+
   const y=new Date(n);y.setDate(y.getDate()-1);const dS=k=>sum(entries.filter(e=>e.date===k&&e.type==='expense')),a=dS(iso(n)),d=a-dS(iso(y));
   $('mDelta').innerHTML=`<span class="${d>0?'up':'dn2'}">${d>0?'▲':'▼'}</span> ${fmt(Math.abs(d))} ${d>0?'more':'less'} than yesterday · today ${fmt(a)}`;
   $('mPct').textContent=sp>lim?'Over':pct+'%';
   $('mBar').style.width=Math.min(100,pct)+'%';$('mBar').className='fill'+(sp>lim?' over':pct<=20?' warn':'');
   $('mSpent').textContent=sp>lim?(c?'Over budget by '+fmt(sp-lim):sp<=STRETCH?'Emergency stretch · '+fmt(STRETCH-sp)+' left':'Over stretch by '+fmt(sp-STRETCH)):fmt(left)+' left of '+fmt(lim);
-  $('mBud').textContent=sp<lim?'Safe to spend about '+fmt(left/dl)+' a day for '+dl+' days':c?'Budget crossed. The extra is cut from your next budget.':'Limit crossed. Try not to spend more this month.';
+  
+  // Dynamic daily safe spend (excluding committed rent from the calculation)
+  const nonRentBudget=Math.max(0,lim-(rentTarget()||rent));
+  const safeDailyLeft=Math.max(0,nonRentBudget-daily);
+  const dailyAllowance=Math.round(safeDailyLeft/dl);
+  $('mBud').textContent=sp<lim?`Safe to spend ~${fmt(dailyAllowance)} a day for ${dl} days left in cycle`:(c?'Budget crossed. Extra is cut from next budget.':'Limit crossed. Try not to spend more this month.');
   renderWave();
 }
 $('bCat').innerHTML=BCATS.map(c=>`<option>${c}</option>`).join('');

@@ -32,8 +32,19 @@ export function drawRadial(){
 }
 $('radial').onclick=e=>{const w=e.target.closest('[data-w]');if(!w)return;if(w.dataset.w==='More')$('cats').classList.toggle('hidden');else{setSelCat(w.dataset.w);drawCats()}};
 export function setType(t){setSelType(t);[...$('typeSeg').children].forEach(b=>b.classList.toggle('on',b.dataset.ty===t))}
-export function openSheet(){buildHist();drawQuick();setSelCat(null);setSug(null);setType('expense');$('amt').value='';$('note').value='';$('dt').value=iso(new Date());
-  $('st').textContent='Say: “tea 20 rupees” or “got salary 29000”';$('cats').classList.add('hidden');drawCats();$('ov').classList.remove('hidden')}
+export function openSheet(init={}){
+  buildHist();drawQuick();
+  setSelCat(init.category||null);
+  setSug(null);
+  setType(init.type||'expense');
+  $('amt').value=init.amount!=null?init.amount:'';
+  $('note').value=init.note||'';
+  $('dt').value=init.date||iso(new Date());
+  $('st').textContent=init.status||'Say: “tea 20 rupees” or “got salary 29000”';
+  $('cats').classList.add('hidden');
+  drawCats();
+  $('ov').classList.remove('hidden');
+}
 export const closeSheet=()=>{$('ov').classList.add('hidden');if(rec&&listening)rec.stop()};
 $('fab').onclick=openSheet;$('close').onclick=closeSheet;$('ov').onclick=e=>{if(e.target===$('ov'))closeSheet()};
 $('typeSeg').onclick=e=>{const b=e.target.closest('button');if(b)setType(b.dataset.ty)};
